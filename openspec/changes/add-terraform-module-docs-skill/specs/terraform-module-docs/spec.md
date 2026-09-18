@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A Claude Code skill that audits, generates, and regenerates documentation for a Terraform module using the terraform-docs plus `.header.md` convention, so that READMEs, examples, and input/output descriptions stay complete and consistent with the module's CI check.
+A Claude Code skill that documents undocumented or minimally documented Terraform modules using the terraform-docs plus `.header.md` convention, so that READMEs, examples, and input/output descriptions become complete and stay consistent with a terraform-docs CI check.
 
 ## ADDED Requirements
 
@@ -28,9 +28,13 @@ When invoked on a module directory, the skill SHALL first produce an audit that 
 - **WHEN** a `variables.tf` contains a variable block with no `description` attribute
 - **THEN** the audit names the file and the variable so the user can locate it
 
-#### Scenario: Hand-written README is not overwritten silently
-- **WHEN** a `README.md` exists without `<!-- BEGIN_TF_DOCS -->` and `<!-- END_TF_DOCS -->` markers
-- **THEN** the audit flags it as hand-maintained and the skill MUST NOT regenerate it until the user confirms migrating its prose into `.header.md`
+#### Scenario: Minimal README is treated as generated
+- **WHEN** a `README.md` exists that is empty, contains only a title and one paragraph, or consists only of terraform-docs output with or without markers
+- **THEN** the audit classifies it as minimal and the skill proceeds to replace it, carrying any existing title and paragraph into `.header.md`
+
+#### Scenario: Substantial hand-written README is out of scope
+- **WHEN** a `README.md` exists without terraform-docs markers and contains more than a title and a short introduction, for example several sections or code samples
+- **THEN** the audit flags it as hand-maintained, the skill MUST NOT regenerate it, and the skill limits its changes on that module to variable and output descriptions unless the user explicitly asks to migrate the prose into `.header.md`
 
 ### Requirement: Prose documentation is written to `.header.md`, never into the generated README
 The skill SHALL write all narrative documentation (title, summary, usage example, feature sections, common errors, contributing link) into `.header.md` at the module or example root, and SHALL treat `README.md` as generated output only.
