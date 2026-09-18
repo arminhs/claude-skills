@@ -1,7 +1,7 @@
 ---
 name: terraform-module-docs
 description: Document a Terraform module in the aws-ia style (terraform-docs plus .header.md). Use when the user asks to document a Terraform module, generate or regenerate a module README, update the README for this module, write or fix .header.md, document the variables or outputs, add missing variable or output descriptions, add a README to an example, or write an upgrade guide. Targets undocumented modules and modules whose README is empty, minimal, or terraform-docs output; hand-maintained READMEs are reported, not rewritten.
-allowed-tools: Bash(terraform-docs:*) Bash(terraform fmt:*) Bash(terraform validate:*) Bash(bash:*) Bash(git diff:*) Read Grep Glob
+allowed-tools: Bash(terraform-docs:*), Bash(terraform fmt:*), Bash(terraform validate:*), Bash(bash *scripts/audit.sh*), Bash(git diff:*), Bash(git add:*), Read, Grep, Glob
 license: MIT
 compatibility: Requires the terraform-docs CLI for README generation. Without it the skill still writes .header.md and source descriptions.
 metadata:
@@ -28,16 +28,16 @@ Run the audit from the module root and paste its table into your reply before ch
 bash <skill-dir>/scripts/audit.sh <module-root>
 ```
 
-It lists the root, every module directory under `modules/` at any depth, and every `examples/*` directory containing `.tf` files, with: header present, README classification, terraform-docs config present (root row only, `n/a` elsewhere), and every `file:name` for variables and outputs without a `description`. Below the table it reports the terraform-docs version pinned in CI, the version available locally, and existing upgrade guides.
+It lists the root, every module directory under `modules/` at any depth, and every `examples/*` directory containing `.tf` files, with: header present, README classification, terraform-docs config present (root row only, `n/a` elsewhere), and every `file:name` for variables and outputs without a `description`. A description that is a scaffold placeholder (for example `(optional) describe your variable`, `TODO`, `tbd`) is listed as `file:name(placeholder)` and counts as missing. Below the table it reports the terraform-docs version pinned in CI, the version available locally, and existing upgrade guides.
 
 README classification decides what you may write:
 
 | Classification | Meaning | Allowed writes |
 |----------------|---------|----------------|
 | `absent` | no README | header, descriptions, generate README |
-| `generated` | has `BEGIN_TF_DOCS` and `END_TF_DOCS` markers | header, descriptions, generate README |
+| `generated` | has `BEGIN_TF_DOCS` and `END_TF_DOCS` markers and little prose outside them | header, descriptions, generate README |
 | `minimal(N lines)` | no markers, fewer than 15 non-blank lines, no `##` heading | header (carry over title and paragraph), descriptions, generate README |
-| `hand-maintained(N lines, M h2)` | no markers, more than that | descriptions only |
+| `hand-maintained(N lines, M h2)` | more prose than that outside any marker block, with or without markers | descriptions only |
 
 For a `hand-maintained` README: do not regenerate it. Fill descriptions, then report the README as skipped with its line count. Only migrate its prose into `.header.md` and regenerate if the user explicitly asks for that.
 
@@ -62,7 +62,7 @@ Fence every Terraform snippet as `hcl`. Do not put bare underscores in headings:
 
 ## Step 3: Fill missing descriptions
 
-For each `file:name` the audit listed:
+For each `file:name` the audit listed, including those marked `(placeholder)`, whose existing description you replace:
 
 1. Sample the existing descriptions in that file. Note whether they end with a period, whether optional inputs use the `(Optional)` prefix, and whether other inputs are referenced as `var.<name>` or in backticks. Match what you find. With no existing descriptions, use the defaults in `references/conventions.md`.
 2. Read where the variable or output is used in the module source to learn what it controls.
@@ -88,14 +88,23 @@ Skip this step for `hand-maintained` directories.
 
    Record which READMEs existed before the run. Those go under Modified in the summary when their content changed; new files go under Created.
 
-4. Run the same commands a second time and confirm `git diff --exit-code` reports no change. If it does change, the header or a description contains something terraform-docs rewrites (usually trailing whitespace or an unescaped underscore); fix the source, not the README.
+4. Stage the READMEs the first run produced, then run the same commands a second time and compare against that staged snapshot. Comparing against the committed state would fail whenever the first run changed anything, which is not an idempotence failure.
+
+   ```bash
+   git add -- README.md '**/README.md'
+   # ... second terraform-docs pass over the same directories ...
+   git diff --exit-code -- README.md '**/README.md'
+   ```
+
+   A non-empty diff here means the header or a description contains something terraform-docs rewrites on each pass (usually trailing whitespace or an unescaped underscore); fix the source, not the README.
 
 If `terraform-docs` is not available, do not hand-write the README. Say so plainly, keep the `.header.md` and description changes, and give the user the exact command to run:
 
 ```
 README generation skipped: terraform-docs is not installed. Run from the module root:
   terraform-docs --config .terraform-docs.yaml .
-  terraform-docs --config .terraform-docs.yaml examples/<name>
+  terraform-docs --config .terraform-docs.yaml modules/<name>     # once per module row in the audit
+  terraform-docs --config .terraform-docs.yaml examples/<name>    # once per example row
 ```
 
 ## Step 5: Upgrade guide (only when asked, or on a major version bump)
