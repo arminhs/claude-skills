@@ -28,7 +28,7 @@ Run the audit from the module root and paste its table into your reply before ch
 bash <skill-dir>/scripts/audit.sh <module-root>
 ```
 
-It lists the root, every `modules/*` and every `examples/*` directory containing `.tf` files, with: header present, README classification, terraform-docs config present, and every `file:name` for variables and outputs without a `description`. Below the table it reports the terraform-docs version pinned in CI, the version available locally, and existing upgrade guides.
+It lists the root, every module directory under `modules/` at any depth, and every `examples/*` directory containing `.tf` files, with: header present, README classification, terraform-docs config present (root row only, `n/a` elsewhere), and every `file:name` for variables and outputs without a `description`. Below the table it reports the terraform-docs version pinned in CI, the version available locally, and existing upgrade guides.
 
 README classification decides what you may write:
 
@@ -56,9 +56,9 @@ Root module, from `templates/header.md`:
 
 Examples, from `templates/example-header.md`: title `# <Module title> - Example: <Example name>`, one sentence, then a nested bullet list of what `main.tf` builds. Read the example's `main.tf` and list real resources and options, not generic text.
 
-Child modules under `modules/`: same as the root outline without the upgrade note, and with the `module` block using a relative source `./modules/<name>`.
+Child modules under `modules/` (nested ones included): same as the root outline without the upgrade note, and with the `module` block using a relative source `./modules/<name>`.
 
-Fence every Terraform snippet as `hcl`.
+Fence every Terraform snippet as `hcl`. Do not put bare underscores in headings: terraform-docs escapes them to `\_`. Write `# VPC module - Submodule: \`flow_logs\`` or spell the name with spaces.
 
 ## Step 3: Fill missing descriptions
 
@@ -78,12 +78,15 @@ Skip this step for `hand-maintained` directories.
 
 1. If the module root has no `.terraform-docs.yaml`, copy `templates/terraform-docs.yaml` there.
 2. Pick the version: use the tag the audit found in CI. If the local binary is a different version, still run it but state the mismatch in the summary, because table formatting differs between releases and the CI diff check is strict.
-3. From the module root run, for the root and each allowed directory:
+3. From the module root, run terraform-docs for every row in the audit table that is not `hand-maintained`. Include rows already classified `generated`: their tables may be stale, and regenerating is the only way to find out.
 
    ```bash
    terraform-docs --config .terraform-docs.yaml .
+   terraform-docs --config .terraform-docs.yaml modules/<name>
    terraform-docs --config .terraform-docs.yaml examples/<name>
    ```
+
+   Record which READMEs existed before the run. Those go under Modified in the summary when their content changed; new files go under Created.
 
 4. Run the same commands a second time and confirm `git diff --exit-code` reports no change. If it does change, the header or a description contains something terraform-docs rewrites (usually trailing whitespace or an unescaped underscore); fix the source, not the README.
 

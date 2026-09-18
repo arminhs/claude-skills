@@ -1,4 +1,5 @@
 # <Module title> - Example: <Example name>
+<!-- No bare underscores in headings; wrap names in backticks: `ipam_secondary_cidr` -->
 
 This example builds <one sentence on what is deployed>:
 

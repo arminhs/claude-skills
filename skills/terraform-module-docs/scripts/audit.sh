@@ -42,7 +42,12 @@ undocumented() {
 }
 
 dirs=("$root")
-for d in "$root"/modules/*/ "$root"/examples/*/; do
+if [ -d "$root/modules" ]; then
+  while IFS= read -r d; do
+    ls "$d"/*.tf >/dev/null 2>&1 && dirs+=("$d")
+  done < <(find "$root/modules" -type d -not -path '*/.terraform*' | sort)
+fi
+for d in "$root"/examples/*/; do
   [ -d "$d" ] || continue
   ls "$d"*.tf >/dev/null 2>&1 && dirs+=("${d%/}")
 done
@@ -52,7 +57,11 @@ for d in "${dirs[@]}"; do
   rel="${d#$root}"; rel="${rel#/}"; [ -n "$rel" ] || rel="."
   header=$([ -f "$d/.header.md" ] && echo yes || echo no)
   readme="$(classify_readme "$d/README.md")"
-  cfg=$([ -f "$d/.terraform-docs.yaml" ] || [ -f "$d/.terraform-docs.yml" ] && echo yes || echo no)
+  if [ "$d" = "$root" ]; then
+    cfg=$([ -f "$d/.terraform-docs.yaml" ] || [ -f "$d/.terraform-docs.yml" ] && echo yes || echo no)
+  else
+    cfg="n/a"
+  fi
   undoc="$( { undocumented variable "$d"; undocumented output "$d"; } | tr '\n' ' ')"
   printf '%-40s %-8s %-32s %-8s %s\n' "$rel" "$header" "$readme" "$cfg" "${undoc:--}"
 done

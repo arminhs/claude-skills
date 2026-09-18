@@ -1,4 +1,5 @@
 # <Module title>
+<!-- No bare underscores in headings; wrap names in backticks: `my_module` -->
 
 <One paragraph: what the module deploys and for whom. Link to the examples directory, e.g. "Common deployment examples can be found in [examples/](./examples).">
 

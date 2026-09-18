@@ -50,6 +50,10 @@ This example builds <one sentence>:
 
 The title after the dash uses the module's short name (`VPC module - Example: Basic VPC`). Bullets use `*` with four-space indented sub-bullets.
 
+## Headings
+
+- No bare underscores in any heading. terraform-docs runs with `settings.escape: true` and rewrites `flow_logs` to `flow\_logs` inside headings, which is ugly in the README source. Put the name in backticks (`# VPC module - Submodule: \`flow_logs\``) or use spaces (`Flow logs`). Text inside backticks is not escaped. Observed when generating `modules/flow_logs/README.md`.
+
 ## Code blocks
 
 Observed in `.header.md`.
